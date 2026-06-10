@@ -66,7 +66,7 @@ export class DamageNumbers {
         this.active.splice(i, 1);
         continue;
       }
-      this.projected.set(n.pos.x, 1.4, n.pos.z).project(camera);
+      this.projected.set(n.pos.x, 1.7, n.pos.z).project(camera);
       const x = ((this.projected.x + 1) / 2) * window.innerWidth + n.drift * t;
       const y = ((1 - this.projected.y) / 2) * window.innerHeight - 55 * t;
       n.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;

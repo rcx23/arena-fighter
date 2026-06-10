@@ -34,7 +34,7 @@ export class Bullet extends Projectile {
     this.visualSize = opts.size ?? 0.13;
     this.visualColor = opts.color ?? 0xffd23e;
     this.radius = this.visualSize;
-    this.visualHeight = 0.55;
+    this.visualHeight = 0.8; // muzzle height of the action-figure rigs
   }
 
   update(dt: number, world: World): void {

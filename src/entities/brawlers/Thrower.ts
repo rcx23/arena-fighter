@@ -12,7 +12,7 @@ export class Thrower extends Brawler {
         name,
         kind: 'thrower',
         maxHealth: 3000,
-        moveSpeed: 4.4,
+        moveSpeed: 3.3,
         superChargeDamage: 4400,
         ammoRegen: 1 / 2.0,
         color: 0xf08c1e,

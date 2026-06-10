@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { buildCharacter, type CharacterRig } from './CharacterMeshBuilder';
 import { buildMapVisual, hideWallInstance, type MapVisual } from './MapMeshBuilder';
 import { addOutline, makeToonMaterial } from './ToonFactory';
+import { getSharedGrunge, makeCrateTexture } from './InkTextures';
 import { EffectsPool } from './EffectsPool';
+import { AimIndicator } from './AimIndicator';
 import { Brawler } from '../entities/Brawler';
 import { Projectile } from '../entities/projectiles/Projectile';
 import { PowerCube } from '../entities/PowerCube';
@@ -25,6 +27,11 @@ const sphereGeo = new THREE.SphereGeometry(1, 10, 8);
 const cubeGeo = new THREE.BoxGeometry(0.38, 0.38, 0.38);
 const crateGeo = new THREE.BoxGeometry(0.92, 0.8, 0.92);
 
+let crateTexture: THREE.CanvasTexture | null = null;
+function getCrateTexture(): THREE.CanvasTexture {
+  return (crateTexture ??= makeCrateTexture());
+}
+
 /**
  * Owns the Three.js scene: lighting, map meshes, per-entity visuals, the
  * poison zone overlay and transient effects. Reads simulation state every
@@ -34,6 +41,7 @@ export class RenderSystem {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly effects: EffectsPool;
+  readonly aimIndicator: AimIndicator;
 
   private visuals = new Map<number, EntityVisual>();
   private mapVisual: MapVisual | null = null;
@@ -45,14 +53,18 @@ export class RenderSystem {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Hard-edged shadows read as comic ink; also cheaper than PCF.
+    this.renderer.shadowMap.type = THREE.BasicShadowMap;
 
-    this.scene.background = new THREE.Color(0x2a2030);
+    this.scene.background = new THREE.Color(0x241a26);
     this.effects = new EffectsPool(this.scene);
+    this.aimIndicator = new AimIndicator(this.scene);
 
     // Warm key light with shadows covering the whole arena, plus sky fill.
-    const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
-    sun.position.set(28, 30, 8);
+    // Sun from the camera's side of the sky so the surfaces players see are
+    // the lit ones; the angle still leaves shade bands for the hatching.
+    const sun = new THREE.DirectionalLight(0xffe8c8, 2.6);
+    sun.position.set(26, 26, 34);
     sun.target.position.set(16, 0, 16);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -64,12 +76,15 @@ export class RenderSystem {
     sun.shadow.camera.far = 70;
     sun.shadow.bias = -0.0005;
     this.scene.add(sun, sun.target);
-    this.scene.add(new THREE.HemisphereLight(0xbfd9ff, 0xc9854f, 0.85));
+    // Dim fill: the shadow band must stay dark enough for tint + hatching.
+    this.scene.add(new THREE.HemisphereLight(0xbfd9ff, 0xc9854f, 0.65));
 
     // Dark apron so the void outside the arena reads as canyon floor.
+    const apronGrunge = getSharedGrunge().clone();
+    apronGrunge.repeat.set(40, 40);
     const apron = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 300),
-      new THREE.MeshBasicMaterial({ color: 0x46332a }),
+      makeToonMaterial(0x46332a, apronGrunge),
     );
     apron.rotation.x = -Math.PI / 2;
     apron.position.set(16, -0.08, 16);
@@ -178,15 +193,17 @@ export class RenderSystem {
       addOutline(mesh, 0.25);
       group = mesh;
     } else if (e instanceof PowerCube) {
-      const mesh = new THREE.Mesh(cubeGeo, makeToonMaterial(0x4ddb3a));
+      const mat = makeToonMaterial(0x4ddb3a);
+      mat.emissive = new THREE.Color(0x1a4d12); // pops even in gas/shadow
+      const mesh = new THREE.Mesh(cubeGeo, mat);
       mesh.castShadow = true;
-      addOutline(mesh, 0.03);
+      addOutline(mesh, 0.04, 'scale');
       group = mesh;
     } else if (e instanceof PowerCubeBox) {
-      const mesh = new THREE.Mesh(crateGeo, makeToonMaterial(0xb98c4a));
+      const mesh = new THREE.Mesh(crateGeo, makeToonMaterial(0xffffff, getCrateTexture()));
       mesh.castShadow = true;
       mesh.position.y = 0.4;
-      addOutline(mesh, 0.03);
+      addOutline(mesh, 0.05, 'scale');
       const wrapper = new THREE.Group();
       wrapper.add(mesh);
       group = wrapper;
@@ -289,11 +306,9 @@ export class RenderSystem {
 function setGroupOpacity(root: THREE.Object3D, opacity: number): void {
   root.traverse((obj) => {
     if (obj instanceof THREE.Mesh) {
-      const mat = obj.material as THREE.Material & { opacity: number; uniforms?: { opacity?: { value: number } } };
+      const mat = obj.material as THREE.Material;
       mat.transparent = opacity < 1;
       mat.opacity = opacity;
-      // Outline ShaderMaterials expose opacity as a uniform instead.
-      if ('uniforms' in mat && mat.uniforms?.opacity) mat.uniforms.opacity.value = opacity;
     }
   });
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { makeToonMaterial } from './ToonFactory';
+import { makeToonMaterial, makeOutlineMaterial } from './ToonFactory';
+import { makeFloorTexture, makeWallTexture, makeBushTexture } from './InkTextures';
 import { TileType } from '../world/tiles';
 import type { TileMap } from '../world/TileMap';
 
@@ -11,38 +12,17 @@ export interface MapVisual {
   dispose(): void;
 }
 
-const FLOOR_A = 0xdca468;
-const FLOOR_B = 0xd29a5c;
-const WATER = 0x4aa3df;
-const BUSH_BASE = 0x4f8a35;
-
 /**
- * Builds all static map visuals: a single textured floor plane (checker, with
- * water/bush base colors painted in) plus instanced wall blocks and bush blobs.
+ * Builds all static map visuals: a hand-drawn floor sheet plus instanced wall
+ * blocks and bush blobs, each with an instanced ink-outline hull sharing the
+ * same instance matrices.
  */
 export function buildMapVisual(map: TileMap): MapVisual {
   const group = new THREE.Group();
 
-  // --- floor: one canvas pixel per tile, NearestFilter keeps edges crisp ---
-  const canvas = document.createElement('canvas');
-  canvas.width = map.width;
-  canvas.height = map.height;
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  for (let tz = 0; tz < map.height; tz++) {
-    for (let tx = 0; tx < map.width; tx++) {
-      const tile = map.get(tx, tz);
-      let color = (tx + tz) % 2 === 0 ? FLOOR_A : FLOOR_B;
-      if (tile === TileType.Water) color = WATER;
-      else if (tile === TileType.Bush) color = BUSH_BASE;
-      ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-      ctx.fillRect(tx, tz, 1, 1);
-    }
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.NearestFilter;
-  texture.magFilter = THREE.NearestFilter;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const floorMat = new THREE.MeshToonMaterial({ map: texture });
+  // --- floor: one big hand-inked canvas (tiles, grout, cracks, water rims) ---
+  const floorTexture = makeFloorTexture(map);
+  const floorMat = makeToonMaterial(0xffffff, floorTexture);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(map.width, map.height), floorMat);
   floor.rotation.x = -Math.PI / 2;
   // With the plane rotated flat and default texture flipY, canvas row 0
@@ -51,7 +31,7 @@ export function buildMapVisual(map: TileMap): MapVisual {
   floor.receiveShadow = true;
   group.add(floor);
 
-  // --- walls ---
+  // --- collect tiles ---
   const wallTiles: number[] = [];
   const bushTiles: number[] = [];
   for (let tz = 0; tz < map.height; tz++) {
@@ -62,8 +42,10 @@ export function buildMapVisual(map: TileMap): MapVisual {
     }
   }
 
+  // --- walls: rocky panel texture + instanced 'scale' outline ---
   const wallGeo = new THREE.BoxGeometry(0.98, 1.1, 0.98);
-  const walls = new THREE.InstancedMesh(wallGeo, makeToonMaterial(0x9a6a3f), wallTiles.length);
+  const wallTexture = makeWallTexture();
+  const walls = new THREE.InstancedMesh(wallGeo, makeToonMaterial(0xffffff, wallTexture), wallTiles.length);
   walls.castShadow = true;
   walls.receiveShadow = true;
   const wallInstances = new Map<number, number>();
@@ -75,11 +57,16 @@ export function buildMapVisual(map: TileMap): MapVisual {
     walls.setMatrixAt(i, m);
     wallInstances.set(idx, i);
   });
-  group.add(walls);
+  const wallOutline = new THREE.InstancedMesh(wallGeo, makeOutlineMaterial(0.04, 'scale'), wallTiles.length);
+  // Share the matrix attribute: hiding a wall instance hides its outline too.
+  wallOutline.instanceMatrix = walls.instanceMatrix;
+  wallOutline.frustumCulled = false;
+  group.add(walls, wallOutline);
 
-  // --- bushes: squashed spheres with per-tile jitter ---
+  // --- bushes: scribbled-leaf spheres + instanced 'normal' outline ---
   const bushGeo = new THREE.SphereGeometry(0.58, 10, 8);
-  const bushes = new THREE.InstancedMesh(bushGeo, makeToonMaterial(0x5fae3e), bushTiles.length);
+  const bushTexture = makeBushTexture();
+  const bushes = new THREE.InstancedMesh(bushGeo, makeToonMaterial(0xffffff, bushTexture), bushTiles.length);
   bushes.castShadow = true;
   const q = new THREE.Quaternion();
   const s = new THREE.Vector3();
@@ -91,24 +78,30 @@ export function buildMapVisual(map: TileMap): MapVisual {
     const j = Math.sin(idx * 127.1) * 0.5 + 0.5;
     p.set(tx + 0.5 + (j - 0.5) * 0.2, 0.25, tz + 0.5 + (j - 0.5) * 0.2);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), j * Math.PI);
-    s.set(0.9 + j * 0.25, 0.55 + j * 0.15, 0.9 + j * 0.25);
+    s.set(0.8 + j * 0.45, 0.5 + j * 0.25, 0.8 + j * 0.45);
     m.compose(p, q, s);
     bushes.setMatrixAt(i, m);
   });
-  group.add(bushes);
+  const bushOutline = new THREE.InstancedMesh(bushGeo, makeOutlineMaterial(0.05, 'normal'), bushTiles.length);
+  bushOutline.instanceMatrix = bushes.instanceMatrix;
+  bushOutline.frustumCulled = false;
+  group.add(bushes, bushOutline);
 
   return {
     group,
     wallInstances,
     walls,
     dispose() {
-      texture.dispose();
+      floorTexture.dispose();
+      wallTexture.dispose();
+      bushTexture.dispose();
       wallGeo.dispose();
       bushGeo.dispose();
       floor.geometry.dispose();
       floorMat.dispose();
-      (walls.material as THREE.Material).dispose();
-      (bushes.material as THREE.Material).dispose();
+      for (const mesh of [walls, wallOutline, bushes, bushOutline]) {
+        (mesh.material as THREE.Material).dispose();
+      }
     },
   };
 }
@@ -118,6 +111,7 @@ export function hideWallInstance(visual: MapVisual, tx: number, tz: number, mapW
   const instance = visual.wallInstances.get(tx + tz * mapWidth);
   if (instance === undefined) return;
   const m = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
+  // The outline InstancedMesh shares this attribute, so it collapses too.
   visual.walls.setMatrixAt(instance, m);
   visual.walls.instanceMatrix.needsUpdate = true;
 }

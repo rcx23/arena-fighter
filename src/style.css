@@ -30,6 +30,26 @@ body {
   overflow: hidden;
 }
 
+/* comic-print vignette */
+#hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(12, 6, 16, 0.42) 100%);
+}
+
+/* static film grain; --grain is a data-URI noise canvas set at startup */
+#hud::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain, none);
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+}
+
 /* ---------- world-projected elements ---------- */
 
 .health-bar {
