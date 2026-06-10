@@ -56,6 +56,22 @@ export class EffectsPool {
   }
 
   explosion(position: Vec2, radius: number): void {
+    // Black ink ring just behind the hot ring - comic-book blast read.
+    const inkMat = basicMat(0x140c10);
+    const inkRing = new THREE.Mesh(ringGeo, inkMat);
+    inkRing.rotation.x = -Math.PI / 2;
+    inkRing.position.set(position.x, 0.05, position.z);
+    this.push({
+      object: inkRing,
+      age: 0,
+      ttl: 0.4,
+      tick(t, o) {
+        const s = (0.3 + (radius / 0.85) * t) * 1.18;
+        o.scale.set(s, s, s);
+        inkMat.opacity = 0.9 * (1 - t);
+      },
+      onDone: () => inkMat.dispose(),
+    });
     const mat = basicMat(0xffb234);
     const ring = new THREE.Mesh(ringGeo, mat);
     ring.rotation.x = -Math.PI / 2;
@@ -90,7 +106,7 @@ export class EffectsPool {
   hitPuff(position: Vec2): void {
     const mat = basicMat(0xffffff);
     const puff = new THREE.Mesh(puffGeo, mat);
-    puff.position.set(position.x, 0.55, position.z);
+    puff.position.set(position.x, 0.85, position.z);
     this.push({
       object: puff,
       age: 0,
@@ -108,7 +124,7 @@ export class EffectsPool {
     const dir = fromAngle(rotation);
     const mat = basicMat(0xffe27a);
     const flash = new THREE.Mesh(flashGeo, mat);
-    flash.position.set(position.x + dir.x * 0.65, 0.6, position.z + dir.z * 0.65);
+    flash.position.set(position.x + dir.x * 0.65, 0.95, position.z + dir.z * 0.65);
     this.push({
       object: flash,
       age: 0,

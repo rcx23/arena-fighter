@@ -90,6 +90,11 @@ export abstract class Brawler extends Entity {
     return this.weapon.range;
   }
 
+  /** Defined only for area weapons (thrower); used by the aim indicator. */
+  get weaponAoeRadius(): number | undefined {
+    return this.weapon.aoeRadius;
+  }
+
   get superReady(): boolean {
     return this.superCharge >= 1;
   }

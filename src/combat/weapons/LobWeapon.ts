@@ -15,7 +15,7 @@ export interface LobWeaponOptions {
 /** Thrower basic attack: a grenade lobbed over walls to the aim point. */
 export class LobWeapon extends Weapon {
   constructor(private readonly opts: LobWeaponOptions) {
-    super(opts.attackInterval, opts.range);
+    super(opts.attackInterval, opts.range, opts.aoeRadius);
   }
 
   protected fire(owner: Brawler, aimPoint: Vec2, world: World): void {

@@ -82,12 +82,14 @@ export class Game {
     if (state === this.lastState) return;
     this.lastState = state;
 
+    const onChangeBrawler = () => this.hud.showSelectScreen((kind) => this.startMatch(kind));
     if (state === 'defeated') {
       this.hud.showEndScreen({
         title: 'DEFEATED',
         defeat: true,
         subtitle: `Rank #${this.mode.playerRank} of 10 · ${this.mode.playerKills} kills`,
         onPlayAgain: () => this.startMatch(this.lastKind),
+        onChangeBrawler,
         onSpectate: () => this.mode.spectate(),
       });
     } else if (state === 'over') {
@@ -99,16 +101,20 @@ export class Game {
           ? `Last one standing · ${this.mode.playerKills} kills`
           : `${this.mode.winnerName} won · you placed #${this.mode.playerRank} · ${this.mode.playerKills} kills`,
         onPlayAgain: () => this.startMatch(this.lastKind),
+        onChangeBrawler,
       });
     }
   }
 
   private render(dt: number): void {
     const playerAlive = this.mode.player?.alive ?? false;
-    const aim = playerAlive
-      ? this.cameraRig.screenToGround(this.input.mouseScreen.x, this.input.mouseScreen.y)
-      : null;
-    this.cameraRig.update(this.mode.cameraTarget(), aim, dt);
+    this.cameraRig.update(this.mode.cameraTarget(), dt);
+
+    const aiming = playerAlive && this.mode.state === 'playing';
+    this.renderSystem.aimIndicator.update(
+      aiming ? this.mode.player : null,
+      aiming ? this.cameraRig.screenToGround(this.input.mouseScreen.x, this.input.mouseScreen.y) : null,
+    );
 
     // Stealth is evaluated from the player's perspective; once spectating,
     // everything is visible.

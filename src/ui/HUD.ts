@@ -8,6 +8,7 @@ interface EndScreenOptions {
   defeat: boolean;
   subtitle: string;
   onPlayAgain: () => void;
+  onChangeBrawler?: (() => void) | undefined;
   onSpectate?: (() => void) | undefined;
 }
 
@@ -150,6 +151,16 @@ export class HUD {
       opts.onPlayAgain();
     });
     buttons.appendChild(again);
+    if (opts.onChangeBrawler) {
+      const change = document.createElement('button');
+      change.textContent = 'CHANGE BRAWLER';
+      change.className = 'secondary';
+      change.addEventListener('click', () => {
+        this.closeOverlay();
+        opts.onChangeBrawler?.();
+      });
+      buttons.appendChild(change);
+    }
     if (opts.onSpectate) {
       const spectate = document.createElement('button');
       spectate.textContent = 'SPECTATE';

@@ -1,15 +1,12 @@
 import * as THREE from 'three';
-import { clamp, damp, type Vec2 } from '../core/MathUtils';
+import { damp, type Vec2 } from '../core/MathUtils';
 import type { GroundPicker } from '../control/PlayerController';
 
-const OFFSET = new THREE.Vector3(0, 17, 10.5);
-const AIM_LEAD = 0.18;
-const MAX_LEAD = 2.5;
+const OFFSET = new THREE.Vector3(0, 15, 9.3);
 
 /**
- * Fixed-yaw angled top-down camera that smoothly follows a focus point with
- * a slight lead toward the mouse. Also converts screen rays to ground points
- * for aiming.
+ * Fixed-yaw angled top-down camera that smoothly follows a focus point.
+ * Also converts screen rays to ground points for aiming.
  */
 export class CameraRig implements GroundPicker {
   readonly camera: THREE.PerspectiveCamera;
@@ -28,15 +25,9 @@ export class CameraRig implements GroundPicker {
     this.syncCamera();
   }
 
-  update(target: Vec2, aimPoint: Vec2 | null, dt: number): void {
-    let fx = target.x;
-    let fz = target.z;
-    if (aimPoint) {
-      fx += clamp((aimPoint.x - target.x) * AIM_LEAD, -MAX_LEAD, MAX_LEAD);
-      fz += clamp((aimPoint.z - target.z) * AIM_LEAD, -MAX_LEAD, MAX_LEAD);
-    }
-    this.focus.x = damp(this.focus.x, fx, 8, dt);
-    this.focus.z = damp(this.focus.z, fz, 8, dt);
+  update(target: Vec2, dt: number): void {
+    this.focus.x = damp(this.focus.x, target.x, 8, dt);
+    this.focus.z = damp(this.focus.z, target.z, 8, dt);
     this.syncCamera();
   }
 

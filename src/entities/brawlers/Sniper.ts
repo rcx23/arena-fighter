@@ -12,7 +12,7 @@ export class Sniper extends Brawler {
         name,
         kind: 'sniper',
         maxHealth: 2800,
-        moveSpeed: 4.5,
+        moveSpeed: 3.4,
         superChargeDamage: 4800,
         ammoRegen: 1 / 2.4,
         color: 0x7a4fd1,

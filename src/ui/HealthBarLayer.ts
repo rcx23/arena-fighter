@@ -9,7 +9,7 @@ interface BarElements {
   cubes: HTMLDivElement;
 }
 
-const HEAD_HEIGHT = 1.75;
+const HEAD_HEIGHT = 2.05;
 
 /**
  * HTML health bars projected over each brawler's head. DOM instead of sprite

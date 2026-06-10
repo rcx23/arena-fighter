@@ -12,7 +12,7 @@ export class Shooter extends Brawler {
         name,
         kind: 'shooter',
         maxHealth: 3600,
-        moveSpeed: 4.6,
+        moveSpeed: 3.5,
         superChargeDamage: 5200,
         ammoRegen: 1 / 1.6,
         color: 0xd9342b,

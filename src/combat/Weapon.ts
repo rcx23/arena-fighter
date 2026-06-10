@@ -15,6 +15,8 @@ export abstract class Weapon {
     protected readonly attackInterval: number,
     /** Max range, used by bot AI to pick engagement distance. */
     readonly range: number,
+    /** Blast radius for area weapons; drives the aim indicator's AoE circle. */
+    readonly aoeRadius?: number,
   ) {}
 
   tryFire(owner: Brawler, aimPoint: Vec2, world: World): boolean {

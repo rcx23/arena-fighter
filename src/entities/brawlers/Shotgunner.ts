@@ -12,7 +12,7 @@ export class Shotgunner extends Brawler {
         name,
         kind: 'shotgunner',
         maxHealth: 5200,
-        moveSpeed: 4.4,
+        moveSpeed: 3.3,
         superChargeDamage: 6000,
         ammoRegen: 1 / 1.8,
         color: 0x3f9b3f,
